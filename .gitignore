@@ -1,0 +1,33 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Generated local vector database
+chroma_db/
+
+# Local source documents
+docs/
+
+# Next.js dependencies and build output
+web/node_modules/
+web/.next/
+web/out/
+web/coverage/
+
+# Logs and local editor/OS files
+*.log
+.DS_Store
+.idea/
+.vscode/
