@@ -1,7 +1,11 @@
 from fastapi import APIRouter, HTTPException, status
 
 from server.schemas import QueryRequest
-from server.services import ingest_documents, search_documents
+from server.services import (
+    ingest_documents,
+    reset_vector_db,
+    search_documents,
+)
 
 # APIRouter keeps HTTP details separate from the RAG service implementation.
 router = APIRouter(tags=["rag"])
@@ -27,4 +31,20 @@ def query_rag(request: QueryRequest):
     return {
         "query": request.query,
         "results": results,
+    }
+
+
+@router.post("/reset-db")
+def reset_db():
+    try:
+        deleted_count = reset_vector_db()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to reset vector database",
+        ) from exc
+
+    return {
+        "status": "reset",
+        "chunks_deleted": deleted_count,
     }

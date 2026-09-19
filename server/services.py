@@ -36,3 +36,18 @@ def search_documents(query: str, k: int):
         }
         for doc in results
     ]
+
+
+def reset_vector_db():
+    store = get_vector_store()
+
+    # Chroma always returns IDs, even when no extra fields are requested.
+    existing_ids = store.get(include=[])["ids"]
+
+    if existing_ids:
+        store.delete(ids=existing_ids)
+
+    # Force the next request to create a fresh Chroma client.
+    get_vector_store.cache_clear()
+
+    return len(existing_ids)
