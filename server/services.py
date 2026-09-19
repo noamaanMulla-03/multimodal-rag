@@ -3,6 +3,10 @@ from rag.text_chunking import text_chunker
 from rag.embeddings import embedd_chunks, get_vector_store
 
 
+class VectorStoreEmptyError(Exception):
+    pass
+
+
 def ingest_documents():
     # The ingestion pipeline is intentionally kept outside the HTTP layer.
     documents = load_documents()
@@ -23,7 +27,14 @@ def ingest_documents():
 
 def search_documents(query: str, k: int):
     # The vector store handles embedding the query and finding nearest chunks.
-    results = get_vector_store().similarity_search(
+    store = get_vector_store()
+
+    if not store.get(include=[])["ids"]:
+        raise VectorStoreEmptyError(
+            "No documents have been ingested yet."
+        )
+
+    results = store.similarity_search(
         query,
         k=k
     )

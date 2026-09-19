@@ -5,6 +5,7 @@ from server.services import (
     ingest_documents,
     reset_vector_db,
     search_documents,
+    VectorStoreEmptyError
 )
 
 # APIRouter keeps HTTP details separate from the RAG service implementation.
@@ -26,7 +27,20 @@ def ingest():
 @router.post("/query")
 def query_rag(request: QueryRequest):
     # QueryRequest has already validated the JSON body before this function runs.
-    results = search_documents(request.query, request.k)
+    try:
+        results = search_documents(request.query, request.k)
+
+    except VectorStoreEmptyError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Query failed",
+        ) from exc
 
     return {
         "query": request.query,
