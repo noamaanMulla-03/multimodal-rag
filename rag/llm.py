@@ -25,7 +25,7 @@ def get_llm() -> ChatOllama:
         model=model_name,
         base_url=os.getenv("OLLAMA_BASE_URL", "https://ollama.com"),
         temperature=0,
-        num_predict=512,
+        num_predict=2048,
         client_kwargs={
             "headers": {
                 "Authorization": f"Bearer {api_key}",

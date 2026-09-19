@@ -47,14 +47,22 @@ def search_documents(query: str):
         k=TOP_K,
     )
 
-    return [
-        {
-            "content": doc.page_content,
-            "source": doc.metadata.get("source"),
-            "page": doc.metadata.get("page"),
-        }
-        for doc in results
-    ]
+    formatted_results = []
+    for doc in results:
+        source = doc.metadata.get("source")
+        page = doc.metadata.get("page")
+
+        # Keep internal paths and zero-based pages in Chroma, but return
+        # user-friendly source metadata to the LLM and API client.
+        formatted_results.append(
+            {
+                "content": doc.page_content,
+                "source": Path(str(source)).name if source else None,
+                "page": page + 1 if isinstance(page, int) else page,
+            }
+        )
+
+    return formatted_results
 
 
 def reset_vector_db():
