@@ -1,17 +1,16 @@
 import os
-import shutil
 from pathlib import Path
 from typing import BinaryIO
 
 from rag.document_loader import load_documents
-from rag.text_chunking import text_chunker
 from rag.embeddings import embedd_chunks, get_vector_store
-
+from rag.text_chunking import text_chunker
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 
 class VectorStoreEmptyError(Exception):
+    # Lets the route distinguish “nothing indexed” from an unexpected query failure.
     pass
 
 
@@ -58,6 +57,7 @@ def search_documents(query: str, k: int):
 
 
 def reset_vector_db():
+    # Delete indexed chunks while leaving the original PDFs in docs/ untouched.
     store = get_vector_store()
 
     # Chroma always returns IDs, even when no extra fields are requested.
@@ -73,6 +73,7 @@ def reset_vector_db():
 
 
 def save_uploaded_pdf(filename: str | None, file_obj: BinaryIO):
+    # Uploaded files are stored in the same directory used by the ingestion loader.
     project_root = Path(__file__).resolve().parent.parent
     docs_dir = project_root / os.getenv("DOCS_DIR", "docs")
     docs_dir.mkdir(parents=True, exist_ok=True)
@@ -96,6 +97,7 @@ def save_uploaded_pdf(filename: str | None, file_obj: BinaryIO):
 
     bytes_written = 0
 
+    # Stream the upload in bounded chunks instead of loading the whole file in memory.
     with destination.open("wb") as output_file:
         while chunk := file_obj.read(1024 * 1024):
             bytes_written += len(chunk)

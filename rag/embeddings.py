@@ -11,6 +11,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
+# All ingested chunks share one persistent Chroma collection.
 _COLLECTION_NAME = "pdf_documents"
 
 
@@ -20,6 +21,7 @@ def get_chunk_source(chunk) -> str:
 
 
 def generate_chunk_ids(chunks):
+    # Stable IDs let repeated ingestion update existing chunks instead of duplicating them.
     chunk_ids = []
 
     for chunk in chunks:
@@ -54,6 +56,7 @@ def get_vector_store():
 
 
 def embedd_chunks(chunks):
+    # Upsert current chunks, then remove records left over from older file versions.
     vector_db = get_vector_store()
     chunk_ids = generate_chunk_ids(chunks)
 

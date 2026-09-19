@@ -1,8 +1,9 @@
 import os
 from pathlib import Path
+
+import tiktoken
 from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import tiktoken
 
 # Keep chunking configuration in the workspace .env file.
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
@@ -21,6 +22,7 @@ def text_chunker(documents):
         return []
 
     text_splitter = RecursiveCharacterTextSplitter(
+        # These values are configurable through .env for tuning retrieval quality.
         chunk_size=int(os.getenv("CHUNK_SIZE", "1000")),
         chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "30")),
         length_function=count_tokens,

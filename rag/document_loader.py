@@ -2,6 +2,7 @@ import os
 import re
 from pathlib import Path
 from typing import Optional
+
 from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 
@@ -58,4 +59,5 @@ def load_documents(docs_directory: Optional[str | Path] = None):
     for document in documents:
         document.page_content = normalize_pdf_text(document.page_content)
 
+    # Empty pages should not create empty chunks or vector records.
     return [document for document in documents if document.page_content]
