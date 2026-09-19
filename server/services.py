@@ -1,8 +1,7 @@
-import os
 from pathlib import Path
 from typing import BinaryIO
 
-from rag.document_loader import load_documents
+from rag.document_loader import ensure_multimedia_directories, load_documents
 from rag.embeddings import embedd_chunks, get_vector_store
 from rag.text_chunking import text_chunker
 
@@ -57,7 +56,7 @@ def search_documents(query: str, k: int):
 
 
 def reset_vector_db():
-    # Delete indexed chunks while leaving the original PDFs in docs/ untouched.
+    # Delete indexed chunks while leaving original files in multimedia/ untouched.
     store = get_vector_store()
 
     # Chroma always returns IDs, even when no extra fields are requested.
@@ -73,10 +72,8 @@ def reset_vector_db():
 
 
 def save_uploaded_pdf(filename: str | None, file_obj: BinaryIO):
-    # Uploaded files are stored in the same directory used by the ingestion loader.
-    project_root = Path(__file__).resolve().parent.parent
-    docs_dir = project_root / os.getenv("DOCS_DIR", "docs")
-    docs_dir.mkdir(parents=True, exist_ok=True)
+    # PDFs are stored in the documents section of the fixed multimedia hierarchy.
+    documents_dir = ensure_multimedia_directories() / "documents"
 
     if not filename:
         raise ValueError("A filename is required")
@@ -87,7 +84,7 @@ def save_uploaded_pdf(filename: str | None, file_obj: BinaryIO):
     if Path(safe_filename).suffix.lower() != ".pdf":
         raise ValueError("Only PDF files are allowed")
 
-    destination = docs_dir / safe_filename
+    destination = documents_dir / safe_filename
 
     # Confirm that the file is actually a PDF.
     file_obj.seek(0)

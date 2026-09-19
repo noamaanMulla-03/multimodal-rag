@@ -17,8 +17,8 @@ htmlcov/
 # Generated local vector database
 chroma_db/
 
-# Local source documents
-docs/
+# Local multimedia source files
+multimedia/
 
 # Next.js dependencies and build output
 web/node_modules/

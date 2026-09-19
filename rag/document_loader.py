@@ -1,13 +1,25 @@
-import os
 import re
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 
 # Load configuration from the workspace root, regardless of the current shell path.
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
+_MULTIMEDIA_DIRECTORY_NAME = "multimedia"
+_MEDIA_SUBDIRECTORIES = ("documents", "images", "videos")
+
+
+def ensure_multimedia_directories() -> Path:
+    """Create and return the fixed local multimedia directory hierarchy."""
+    project_root = Path(__file__).resolve().parent.parent
+    multimedia_dir = project_root / _MULTIMEDIA_DIRECTORY_NAME
+
+    for subdirectory in _MEDIA_SUBDIRECTORIES:
+        (multimedia_dir / subdirectory).mkdir(parents=True, exist_ok=True)
+
+    return multimedia_dir
 
 
 def normalize_pdf_text(text: str) -> str:
@@ -32,23 +44,14 @@ def normalize_pdf_text(text: str) -> str:
     return text.strip()
 
 
-def load_documents(docs_directory: Optional[str | Path] = None):
-    # Resolve the default document directory relative to this workspace.
-    project_root = Path(__file__).resolve().parent.parent
+def load_documents():
+    # Create the local hierarchy on a fresh clone before looking for PDFs.
+    multimedia_dir = ensure_multimedia_directories()
 
-    if docs_directory is None:
-        docs_dir = project_root / os.getenv("DOCS_DIR", "docs")
-    else:
-        docs_dir = Path(docs_directory)
-
-    if not docs_dir.is_absolute():
-        docs_dir = project_root / docs_dir
-
-    if not docs_dir.exists():
-        raise FileNotFoundError(f"Documents directory not found: {docs_dir}")
-
+    # This loader currently handles PDFs; videos and images remain available for
+    # future multimodal processing without being sent through PyPDFLoader.
     loader = DirectoryLoader(
-        str(docs_dir),
+        str(multimedia_dir),
         glob="**/*.pdf",
         loader_cls=PyPDFLoader,
     )
