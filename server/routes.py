@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, UploadFile, File
 
 from server.schemas import QueryRequest
 from server.services import (
     ingest_documents,
     reset_vector_db,
     search_documents,
-    VectorStoreEmptyError
+    VectorStoreEmptyError,
+    save_uploaded_pdf,
 )
 
 # APIRouter keeps HTTP details separate from the RAG service implementation.
@@ -61,4 +62,21 @@ def reset_db():
     return {
         "status": "reset",
         "chunks_deleted": deleted_count,
+    }
+
+
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+def upload_pdf(file: UploadFile = File(...)):
+    try:
+        upload_info = save_uploaded_pdf(file.filename, file.file)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    return {
+        "status": "uploaded",
+        **upload_info,
     }

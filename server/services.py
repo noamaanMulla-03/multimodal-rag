@@ -1,6 +1,14 @@
+import os
+import shutil
+from pathlib import Path
+from typing import BinaryIO
+
 from rag.document_loader import load_documents
 from rag.text_chunking import text_chunker
 from rag.embeddings import embedd_chunks, get_vector_store
+
+
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 
 class VectorStoreEmptyError(Exception):
@@ -62,3 +70,43 @@ def reset_vector_db():
     get_vector_store.cache_clear()
 
     return len(existing_ids)
+
+
+def save_uploaded_pdf(filename: str | None, file_obj: BinaryIO):
+    project_root = Path(__file__).resolve().parent.parent
+    docs_dir = project_root / os.getenv("DOCS_DIR", "docs")
+    docs_dir.mkdir(parents=True, exist_ok=True)
+
+    if not filename:
+        raise ValueError("A filename is required")
+
+    # Remove any directory path supplied by the client.
+    safe_filename = Path(filename.replace("\\", "/")).name
+
+    if Path(safe_filename).suffix.lower() != ".pdf":
+        raise ValueError("Only PDF files are allowed")
+
+    destination = docs_dir / safe_filename
+
+    # Confirm that the file is actually a PDF.
+    file_obj.seek(0)
+    if file_obj.read(5) != b"%PDF-":
+        raise ValueError("The uploaded file is not a valid PDF")
+    file_obj.seek(0)
+
+    bytes_written = 0
+
+    with destination.open("wb") as output_file:
+        while chunk := file_obj.read(1024 * 1024):
+            bytes_written += len(chunk)
+
+            if bytes_written > MAX_UPLOAD_BYTES:
+                destination.unlink(missing_ok=True)
+                raise ValueError("PDF cannot be larger than 25 MB")
+
+            output_file.write(chunk)
+
+    return {
+        "filename": safe_filename,
+        "size_bytes": bytes_written,
+    }

@@ -1261,6 +1261,7 @@ dependencies = [
     { name = "langchain-text-splitters" },
     { name = "pypdf" },
     { name = "python-dotenv" },
+    { name = "python-multipart" },
     { name = "sentence-transformers" },
     { name = "tiktoken" },
 ]
@@ -1274,6 +1275,7 @@ requires-dist = [
     { name = "langchain-text-splitters", specifier = "==1.1.2" },
     { name = "pypdf", specifier = "==6.19.0" },
     { name = "python-dotenv", specifier = "==1.2.3" },
+    { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "sentence-transformers", specifier = "==6.0.1" },
     { name = "tiktoken", specifier = "==0.14.0" },
 ]
