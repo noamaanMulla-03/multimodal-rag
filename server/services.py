@@ -3,9 +3,11 @@ from typing import BinaryIO
 
 from rag.document_loader import ensure_multimedia_directories, load_documents
 from rag.embeddings import embedd_chunks, get_vector_store
+from rag.llm import get_llm
 from rag.text_chunking import text_chunker
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+TOP_K = 5
 
 
 class VectorStoreEmptyError(Exception):
@@ -31,7 +33,7 @@ def ingest_documents():
     }
 
 
-def search_documents(query: str, k: int):
+def search_documents(query: str):
     # The vector store handles embedding the query and finding nearest chunks.
     store = get_vector_store()
 
@@ -42,7 +44,7 @@ def search_documents(query: str, k: int):
 
     results = store.similarity_search(
         query,
-        k=k
+        k=TOP_K,
     )
 
     return [
@@ -108,4 +110,37 @@ def save_uploaded_pdf(filename: str | None, file_obj: BinaryIO):
     return {
         "filename": safe_filename,
         "size_bytes": bytes_written,
+    }
+
+
+def answer_question(query: str):
+    results = search_documents(query)
+
+    context = "\n\n".join(
+        f"Source: {item['source']}, Page: {item['page']}\n"
+        f"{item['content']}"
+        for item in results
+    )
+
+    # Give `context` and `query` to the LLM here.
+    answer = get_llm().invoke(
+        f"""
+        Answer only from the provided context.
+        If the answer is not in the context, say so.
+        Include the source and page when possible.
+
+        Context:
+        {context}
+
+        Question:
+        {query}
+        """
+    )
+
+    return {
+        "answer": answer.content,
+        "sources": [
+            {"source": item["source"], "page": item["page"]}
+            for item in results
+        ],
     }

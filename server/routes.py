@@ -3,10 +3,10 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from server.schemas import QueryRequest
 from server.services import (
     VectorStoreEmptyError,
+    answer_question,
     ingest_documents,
     reset_vector_db,
     save_uploaded_pdf,
-    search_documents,
 )
 
 # APIRouter keeps HTTP details separate from the RAG service implementation.
@@ -29,7 +29,7 @@ def ingest():
 def query_rag(request: QueryRequest):
     # QueryRequest has already validated the JSON body before this function runs.
     try:
-        results = search_documents(request.query, request.k)
+        answer = answer_question(request.query)
 
     except VectorStoreEmptyError as exc:
         raise HTTPException(
@@ -43,10 +43,8 @@ def query_rag(request: QueryRequest):
             detail="Query failed",
         ) from exc
 
-    return {
-        "query": request.query,
-        "results": results,
-    }
+    # answer_question already returns the answer text and its source metadata.
+    return answer
 
 
 @router.post("/reset-db")
