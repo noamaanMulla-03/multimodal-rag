@@ -3,13 +3,16 @@ from fastapi import APIRouter, HTTPException, status
 from server.schemas import QueryRequest
 from server.services import ingest_documents, search_documents
 
+# APIRouter keeps HTTP details separate from the RAG service implementation.
 router = APIRouter(tags=["rag"])
 
 
 @router.post("/ingest", status_code=status.HTTP_201_CREATED)
 def ingest():
+    # Ingestion changes the persistent vector database, so this is a POST route.
     try:
         return ingest_documents()
+    # Services raise normal Python errors; routes translate them into HTTP errors.
     except FileNotFoundError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except ValueError as exc:
@@ -18,6 +21,7 @@ def ingest():
 
 @router.post("/query")
 def query_rag(request: QueryRequest):
+    # QueryRequest has already validated the JSON body before this function runs.
     results = search_documents(request.query, request.k)
 
     return {

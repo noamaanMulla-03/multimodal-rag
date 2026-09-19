@@ -5,10 +5,12 @@ from typing import Optional
 from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
 
+# Load configuration from the workspace root, regardless of the current shell path.
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 
 def normalize_pdf_text(text: str) -> str:
+    # PDF extraction often produces layout artifacts that hurt search quality.
     text = text.replace("\u00a0", " ")
 
     # Remove PDF decoration and known extraction artifacts.
@@ -20,7 +22,7 @@ def normalize_pdf_text(text: str) -> str:
         text,
     )
 
-    # Preserve paragraph breaks while joining PDF line wrapping.
+    # Preserve paragraph breaks while joining line wraps created by PDF extraction.
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
@@ -30,6 +32,7 @@ def normalize_pdf_text(text: str) -> str:
 
 
 def load_documents(docs_directory: Optional[str | Path] = None):
+    # Resolve the default document directory relative to this workspace.
     project_root = Path(__file__).resolve().parent.parent
 
     if docs_directory is None:
@@ -49,6 +52,7 @@ def load_documents(docs_directory: Optional[str | Path] = None):
         loader_cls=PyPDFLoader,
     )
 
+    # Clean text before chunking so embeddings and returned answers use the same text.
     documents = loader.load()
 
     for document in documents:

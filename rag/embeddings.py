@@ -15,6 +15,7 @@ _COLLECTION_NAME = "pdf_documents"
 
 
 def get_chunk_source(chunk) -> str:
+    # Source metadata is used to replace stale chunks when a file changes.
     return str(chunk.metadata.get("source", "unknown"))
 
 
@@ -24,6 +25,7 @@ def generate_chunk_ids(chunks):
     for chunk in chunks:
         source = get_chunk_source(chunk)
         source_name = Path(source).name
+        # Include the full source path so same-named files cannot share IDs.
         source_hash = hashlib.sha256(source.encode("utf-8")).hexdigest()[:12]
         page = chunk.metadata.get("page", "unknown")
         normalized_text = re.sub(r"\s+", " ", chunk.page_content).strip()
@@ -38,6 +40,7 @@ def generate_chunk_ids(chunks):
 
 @lru_cache
 def get_vector_store():
+    # Cache the embedding model and Chroma client instead of rebuilding them per request.
     project_root = Path(__file__).resolve().parent.parent
     embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
     persist_directory = project_root / os.getenv("PERSIST_DIRECTORY", "chroma_db")
@@ -54,10 +57,12 @@ def embedd_chunks(chunks):
     vector_db = get_vector_store()
     chunk_ids = generate_chunk_ids(chunks)
 
+    # Group current IDs by source so only that source's stale records are removed.
     current_ids_by_source = defaultdict(set)
     for chunk, chunk_id in zip(chunks, chunk_ids):
         current_ids_by_source[get_chunk_source(chunk)].add(chunk_id)
 
+    # Read old IDs before upserting, allowing cleanup after the new data succeeds.
     existing_ids_by_source = {
         source: set(vector_db.get(where={"source": source})["ids"])
         for source in current_ids_by_source
@@ -65,6 +70,7 @@ def embedd_chunks(chunks):
 
     vector_db.add_documents(documents=chunks, ids=chunk_ids)
 
+    # Remove chunks that belonged to an older version of each ingested document.
     for source, current_ids in current_ids_by_source.items():
         stale_ids = existing_ids_by_source[source] - current_ids
         if stale_ids:

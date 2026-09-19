@@ -4,8 +4,10 @@ from rag.embeddings import embedd_chunks, get_vector_store
 
 
 def ingest_documents():
+    # The ingestion pipeline is intentionally kept outside the HTTP layer.
     documents = load_documents()
 
+    # Documents are normalized by the loader before they are split into chunks.
     chunks = text_chunker(documents)
 
     if not chunks:
@@ -20,6 +22,7 @@ def ingest_documents():
 
 
 def search_documents(query: str, k: int):
+    # The vector store handles embedding the query and finding nearest chunks.
     results = get_vector_store().similarity_search(
         query,
         k=k
