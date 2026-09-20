@@ -7,6 +7,7 @@ from server.services import (
     ingest_documents,
     reset_vector_db,
     save_uploaded_pdf,
+    save_uploaded_image
 )
 
 # APIRouter keeps HTTP details separate from the RAG service implementation.
@@ -64,7 +65,7 @@ def reset_db():
     }
 
 
-@router.post("/upload", status_code=status.HTTP_201_CREATED)
+@router.post("/upload/document", status_code=status.HTTP_201_CREATED)
 def upload_pdf(file: UploadFile = File(...)):
     # Upload uses multipart/form-data and only saves the PDF; /ingest indexes it.
     try:
@@ -78,5 +79,23 @@ def upload_pdf(file: UploadFile = File(...)):
 
     return {
         "status": "uploaded",
+        **upload_info,
+    }
+
+
+@router.post("/upload/image", status_code=status.HTTP_201_CREATED)
+def upload_image(file: UploadFile = File(...)):
+    try:
+        upload_info = save_uploaded_image(file.filename, file.file)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        ) from exc
+
+    return {
+        "status": "uploaded",
+        "media_type": "image",
         **upload_info,
     }

@@ -8,7 +8,7 @@ from rag.text_chunking import text_chunker
 
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 TOP_K = 5
-
+ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
 
 class VectorStoreEmptyError(Exception):
     # Lets the route distinguish “nothing indexed” from an unexpected query failure.
@@ -151,4 +151,47 @@ def answer_question(query: str):
             {"source": item["source"], "page": item["page"]}
             for item in results
         ],
+    }
+
+
+def save_uploaded_image(filename: str | None, file_obj: BinaryIO):
+    images_dir = ensure_multimedia_directories() / "images"
+
+    if not filename:
+        raise ValueError("A filename is required.")
+
+    safe_filename = Path(filename.replace("\\", "/")).name
+    suffix = Path(safe_filename).suffix.lower()
+
+    if suffix not in ALLOWED_IMAGE_SUFFIXES:
+        raise ValueError("Only JPG, PNG, and WEBP images are allowed")
+
+     # Do not trust the file extension alone—check the actual file signature.
+    file_obj.seek(0)
+    header = file_obj.read(12)
+    file_obj.seek(0)
+
+    is_png = header.startswith(b"\x89PNG\r\n\x1a\n")
+    is_jpeg = header.startswith(b"\xff\xd8\xff")
+    is_webp = header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+
+    if not (is_png or is_jpeg or is_webp):
+        raise ValueError("The uploaded file is not a valid image")
+
+    destination = images_dir / safe_filename
+    bytes_written = 0
+    
+    with destination.open("wb") as output_file:
+        while chunk := file_obj.read(1024 * 1024):
+            bytes_written += len(chunk)
+
+            if bytes_written > MAX_UPLOAD_BYTES:
+                destination.unlink(missing_ok=True)
+                raise ValueError("Image cannot be larger than 25 MB")
+
+            output_file.write(chunk)
+
+    return {
+        "filename": safe_filename,
+        "size_bytes": bytes_written,
     }
