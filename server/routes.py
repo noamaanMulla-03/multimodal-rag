@@ -6,8 +6,9 @@ from server.services import (
     answer_question,
     ingest_documents,
     reset_vector_db,
+    save_uploaded_image,
     save_uploaded_pdf,
-    save_uploaded_image
+    save_uploaded_video,
 )
 
 # APIRouter keeps HTTP details separate from the RAG service implementation.
@@ -97,5 +98,24 @@ def upload_image(file: UploadFile = File(...)):
     return {
         "status": "uploaded",
         "media_type": "image",
+        **upload_info,
+    }
+
+
+@router.post("/upload/video", status_code=status.HTTP_201_CREATED)
+def upload_video(file: UploadFile = File(...)):
+    try:
+        upload_info = save_uploaded_video(file.filename, file.file)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    return {
+        "status": "uploaded",
+        "media_type": "video",
+        "processing_status": "not_started",
         **upload_info,
     }

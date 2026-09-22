@@ -6,9 +6,17 @@ from rag.embeddings import embedd_chunks, get_vector_store
 from rag.llm import get_llm
 from rag.text_chunking import text_chunker
 
+
+# Image Constraints
 MAX_UPLOAD_BYTES = 25 * 1024 * 1024
-TOP_K = 5
 ALLOWED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp"}
+
+# Video Constraints
+MAX_VIDEO_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB example limit
+ALLOWED_VIDEO_SUFFIXES = {".mp4", ".mov", ".webm"}
+
+TOP_K = 5
+
 
 class VectorStoreEmptyError(Exception):
     # Lets the route distinguish “nothing indexed” from an unexpected query failure.
@@ -164,7 +172,11 @@ def save_uploaded_image(filename: str | None, file_obj: BinaryIO):
     suffix = Path(safe_filename).suffix.lower()
 
     if suffix not in ALLOWED_IMAGE_SUFFIXES:
-        raise ValueError("Only JPG, PNG, and WEBP images are allowed")
+        allowed = ", ".join(
+            extension.removeprefix(".").upper()
+            for extension in sorted(ALLOWED_IMAGE_SUFFIXES)
+        )
+        raise ValueError(f"Only {allowed} images are allowed")
 
      # Do not trust the file extension alone—check the actual file signature.
     file_obj.seek(0)
@@ -188,6 +200,53 @@ def save_uploaded_image(filename: str | None, file_obj: BinaryIO):
             if bytes_written > MAX_UPLOAD_BYTES:
                 destination.unlink(missing_ok=True)
                 raise ValueError("Image cannot be larger than 25 MB")
+
+            output_file.write(chunk)
+
+    return {
+        "filename": safe_filename,
+        "size_bytes": bytes_written,
+    }
+
+
+def save_uploaded_video(filename: str | None, file_obj: BinaryIO):
+    videos_dir = ensure_multimedia_directories() / "videos"
+
+    if not filename:
+        raise ValueError("A filename is required")
+
+    safe_filename = Path(filename.replace("\\", "/")).name
+    suffix = Path(safe_filename).suffix.lower()
+
+    if suffix not in ALLOWED_VIDEO_SUFFIXES:
+        allowed = ", ".join(
+            extension.removeprefix(".").upper()
+            for extension in sorted(ALLOWED_VIDEO_SUFFIXES)
+        )
+        raise ValueError(f"Only {allowed} videos are allowed")
+
+    # Check the container signature instead of trusting only the extension.
+    file_obj.seek(0)
+    header = file_obj.read(12)
+    file_obj.seek(0)
+
+    is_mp4_or_mov = header[4:8] == b"ftyp"
+    is_webm = header.startswith(b"\x1a\x45\xdf\xa3")
+
+    if not (is_mp4_or_mov or is_webm):
+        raise ValueError("The uploaded file is not a valid video")
+
+    destination = videos_dir / safe_filename
+    bytes_written = 0
+
+     # Save incrementally so a large video is not loaded fully into RAM.
+    with destination.open("wb") as output_file:
+        while chunk := file_obj.read(1024 * 1024):
+            bytes_written += len(chunk)
+
+            if bytes_written > MAX_VIDEO_UPLOAD_BYTES:
+                destination.unlink(missing_ok=True)
+                raise ValueError("Video cannot be larger than 100 MB")
 
             output_file.write(chunk)
 
